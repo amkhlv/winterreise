@@ -1,0 +1,16 @@
+<configuration>
+  <tmpfile><in_xdg_runtime/></tmpfile>
+  <spaceBetweenButtons>5</spaceBetweenButtons>
+  <maxwidth>60</maxwidth>
+  <!-- We introduce some delay between sending requests to the Window Manager. -->
+  <delay>100</delay>
+  <!-- Typically we need to submit 2 or more requests to the Window Manager.
+       Increase the number of attempts if necessary -->
+  <attempts>5</attempts>
+  <blacklist>
+    <item><class>xfce4-panel</class></item>
+    <item><class>xfdesktop</class></item>
+    <item><class>gnome-panel</class></item>
+    <item><class>kdesktop</class></item>
+  </blacklist>
+</configuration>

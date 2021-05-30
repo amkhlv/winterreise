@@ -1,0 +1,174 @@
+/*
+ * Spacing between buttons is the second argument in
+ *   vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 1);
+ * 
+ * For dark background colors, pay attention to the   text-shadow   parameter
+ */
+
+.main_window {
+    /*background: #00ccff;*/
+    background-image: url("4734466.png");  /* relative to .wmjump dir */  
+}
+.main_window_currentonly {
+    /*background: #ccff00;*/
+    background-image: url("1949347.png");
+}
+.main_window_tile {
+    background-image: url("2190687.png");
+}
+.main_vbox {
+    padding:10px;
+}
+.wmjump_lbtn {
+    font-size: 18pt;
+    font-family: DejaVu Sans Mono;
+  box-shadow: none;
+  border: none;
+  padding: 5px;
+}
+.wmjump_lbtn_current {
+    font-size: 18pt;
+    font-family: DejaVu Sans Mono;
+    border-color: orange;
+    background-color: white;
+    color: red;
+    font-weight: bold;
+    border-width: 2pt;
+    box-shadow: none;
+    padding: 3px;
+}
+.wmjump_button {
+  font-family: DejaVu;
+  font-size: 14pt;
+  /*background: #dddddd; */
+  box-shadow: none;
+  border: none;
+  padding: 5px;
+}
+.wmjump_rbtn {
+    font-size: 18pt;
+    font-family: DejaVu Sans Mono;
+    box-shadow: none;
+    border: none;
+    padding: 5px;
+}
+.wmjump_rbtn_current {
+    font-size: 18pt;
+    font-family: DejaVu Sans Mono;
+    border-color: orange;
+    background-color: white;
+    color: red;
+    font-weight: bold;
+    border-width: 2pt;
+    box-shadow: none;
+    padding: 3px;
+}
+.wmjump_button:hover {
+  box-shadow: none;
+  border: none;
+  transition: 300ms;
+}
+.wmjump_button:hover:active {
+  background-color: red;
+  transition: 300ms;
+}
+.wmjump_cmd_entry {
+    box-shadow: none;
+    border-color: orange;
+    border-width: 2pt;
+    background-color: lightblue;
+    font-size:18pt;
+}
+
+.wbtn_evolution , 
+.wbtn_thunar {
+  background: #c7c7ff;
+  color: black;
+}
+
+.wbtn_emacs {
+    background: #2F4F4F;
+    color: #FAEBD7;
+    text-shadow: 0px 0px #2F4F4F;
+}
+
+.wbtn_tk {
+    background: #99ccff;
+}
+
+.wbtn_acroread, .wbtn_gsview, .wbtn_pdq {
+    background: #FF9eaa;
+    color: black;
+}
+
+.wbtn_xfce4-terminal,
+.wbtn_gnome-terminal,
+.wbtn_konsole,
+.wbtn_urxvt,
+.wbtn_xterm,
+.wbtn_x-terminal-emulator {
+    background: #fcf670;
+    color: #000060;
+}
+
+.wbtn_gvim, .wbtn_nvim-qt {
+    background: #84EC84;
+}
+
+.wbtn_code {
+    background: #1F8AD2;
+    color: #FFFFFF;
+}
+
+.wbtn_crx_mpognobbkildjkofajifpdfhcoklimli, .wbtn_chromium, .wbtn_google-chrome {
+    background: #d0e2f1;
+    color: black;
+}
+
+.wbtn_vivaldi-stable  {
+    background: #b72f30;
+    color: #FAEBD7;
+}
+
+.wbtn_midori {
+    background: #80d040;
+    color: #000080;
+}
+
+.wbtn_ticks {
+    background: #80d040;
+    color: #000080;
+}
+
+.wbtn_vncviewer {
+    background: #ffcccc;
+    color: #0000cc;
+}
+
+.wbtn_Navigator {
+    background: #FFA54F;
+    color: #000060;
+}
+
+.wbtn_todo-reminder, .wbtn_monthly, .wbtn_daily-exe, .wbtn_alert {   
+    background: #FF0000;
+    color: #FFFFFF;
+}
+
+.wbtn_bother {
+    background: #802000;
+    color: #ffffff;
+}
+
+.wbtn_gnome-volume-control,
+.wbtn_pavucontrol {
+    background: #aaddc3;
+    color: #000099;
+}
+
+.wbtn_rhythmbox, .wbtn_vlc, .wbtn_smplayer {
+    background: #aaddc3;
+    color: #990000;
+}
+
+/* happy wmjumping! */

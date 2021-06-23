@@ -23,7 +23,7 @@ Installation
 Need to install [Cargo](https://www.rust-lang.org/tools/install), 
 and some system libraries:
 
-    sudo apt-get install libxcb-ewmh-dev libxcb-icccm4-dev x11-utils
+    sudo apt-get install build-essential libxcb-ewmh-dev libxcb-icccm4-dev x11-utils libgtk-3-dev libgdk-pixbuf-2.0-dev libatk1.0-dev libpango1.0-dev libcairo-dev libglib2.0-dev
 
 then build and install:
 

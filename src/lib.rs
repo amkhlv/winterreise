@@ -107,9 +107,15 @@ pub fn get_wm_data() -> Result<(Rc<Vec<(u32,u32,String,String)>>, Rc<String>, u3
                     let xconn = xcb::base::Connection::connect(None).unwrap();
                     let a = xcb::intern_atom(&xconn.0, false, "_NET_WM_NAME").get_reply().unwrap();
                     let u = xcb::intern_atom(&xconn.0, false, "UTF8_STRING").get_reply().unwrap();
-                    let dtop = ewmh::get_wm_desktop(&ewmh_conn, *w).get_reply().unwrap();
+                    let dtop = ewmh::get_wm_desktop(&ewmh_conn, *w).get_reply().unwrap_or(0);
                     let enc = icccm::get_wm_name(&ewmh_conn, *w).get_reply().unwrap().encoding();
-                    let nm = format!("{}",String::from_utf8(xcb::get_property(&xconn.0, false, *w, a.atom(), u.atom(), 0, std::u32::MAX).get_reply().unwrap().value::<u8>().to_vec()).unwrap_or(String::from("???")));
+                    let nm = match xcb::get_property(&xconn.0, false, *w, a.atom(), u.atom(), 0, std::u32::MAX).get_reply() {
+                        Ok(x) => format!("{}",String::from_utf8(x.value::<u8>().to_vec()).unwrap_or(String::from("???"))),
+                        Err(e) => {
+                            eprintln!("ERROR while xcb::get_property : {:?}",e);
+                            String::from("???")
+                        },
+                    };
                     //let nm = String::from(icccm::get_wm_name(&xcb_conn1, *w).get_reply().unwrap().name());
                     let class = String::from(icccm::get_wm_class(&xcb_conn1, *w).get_reply().unwrap().instance());
                     if enc != xcb::ATOM_STRING { println!("{:#x} COMPOUND_TEXT ENC:{},NAME:{},CLASS:{}", w, enc, &nm, &class); }

@@ -126,6 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let ewmh_conn = ewmh::Connection::connect(xcb_conn).map_err(|(e, _)| e).unwrap();
                     let mut dt = delay;
                     if aa < 97 && aa > 48 {
+                        tmpfile.borrow_mut().write(&format!("{}",active).into_bytes()[..]);
                         for _t in 0..attempts {
                             let new_desktop = (aa - 49) as u32;
                             std::thread::sleep(std::time::Duration::from_millis(dt));

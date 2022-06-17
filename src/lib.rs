@@ -9,7 +9,7 @@ use std::rc::Rc;
 use gtk::prelude::*;
 use dirs::home_dir;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path,PathBuf};
 use xcb_util::{ewmh,icccm};
 
 #[derive(Debug)]
@@ -195,8 +195,16 @@ pub fn make_vbox(
     return (vbox, charhints);
 }
 
+pub fn get_config_dir() ->  PathBuf {
+    let p = Path::join(Path::new(&home_dir().unwrap()), ".config/winterreise/");
+    if p.exists() { p } else { 
+        let mut pb = PathBuf::new();
+        pb.push("/usr/share/winterreise/"); 
+        pb
+    }
+}
 pub fn get_conf() -> Result<Config, WintError> {
-    let config_dir = Path::join(Path::new(&home_dir().unwrap()), ".config/winterreise/");
+    let config_dir = get_config_dir();
     let config_file = File::open(Path::join(&config_dir, "config.xml"))?;
     let conf = serde_xml_rs::from_reader(config_file)?;
     return Ok(conf);

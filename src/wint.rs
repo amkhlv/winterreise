@@ -16,7 +16,7 @@ use dirs::home_dir;
 use std::path::{Path,PathBuf};
 use xcb_util::ewmh;
 
-use winterreise::{Config, get_conf, get_wm_data, make_vbox};
+use winterreise::{Config, get_conf, get_config_dir, get_wm_data, make_vbox};
 
 #[macro_use]
 extern crate serde_derive;
@@ -68,7 +68,7 @@ fn do_resize(conn: &ewmh::Connection, scid: i32, wid: u32, g: &Vec<u32>) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config_dir = Path::join(Path::new(&home_dir().unwrap()), ".config/winterreise/");
+    let config_dir = get_config_dir();
     let conf: Config = get_conf()?;
     let maxlen = conf.maxwidth;
     let blacklist = Rc::new(conf.blacklist);

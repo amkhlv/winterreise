@@ -1,8 +1,22 @@
 [package]
 name = "winterreise"
+description = "Keyboard navigation and window tiling for Linux desktop"
+readme = "README.md"
+license = "GPL-3.0"
 version = "0.1.0"
 authors = ["Andrei Mikhailov <amkhlv@gmail.com>"]
+repository = "https://github.com/amkhlv/winterreise"
 edition = "2018"
+
+[package.metadata.deb]
+assets = [
+    ["target/release/winj", "usr/bin/", "755"],
+    ["target/release/wint", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/winterreise/README", "644"],
+    ["deb.usr-share/config.xml", "usr/share/winterreise/", "644"],
+    ["deb.usr-share/style.css", "usr/share/winterreise/", "644"],
+    ["deb.usr-share/tilings.xml", "usr/share/winterreise/", "644"]
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

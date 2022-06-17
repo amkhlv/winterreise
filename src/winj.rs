@@ -18,7 +18,7 @@ use std::path::Path;
 use std::io::{Write,BufRead};
 use xcb_util::ewmh;
 
-use winterreise::{Config, TMPFile, get_conf, get_wm_data, make_vbox, go_to_window};
+use winterreise::{Config, TMPFile, get_conf, get_config_dir, get_wm_data, make_vbox, go_to_window};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let clops = App::new("wmjump")
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
              .help("only show windows on the current desktop")
              .short("c"))
         .get_matches();
-    let config_dir = Path::join(Path::new(&home_dir().unwrap()), ".config/winterreise/");
+    let config_dir = get_config_dir();
     let conf: Config = get_conf()?;
     let maxlen = conf.maxwidth;
     let blacklist = Rc::new(conf.blacklist);

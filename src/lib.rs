@@ -160,13 +160,14 @@ pub fn make_vbox(
             .filter(|win| match desktop { Some(d) => d == win.1, None => true }) 
             .filter(|win| !(*blacklist).item.iter().map(|i| &i.class).collect::<Vec<&String>>().contains(&&win.3))
             {
+                let class_sanitized = class.replace(".", "_");
                 let hbox = gtk::Box::new(gtk::Orientation::Horizontal,space_between_buttons);
                 let lbtn = gtk::Button::new();
                 let llbl = gtk::Label::new(Some(&format!("{}", (j+97) as char)));
                 if num == active {
                     lbtn.get_style_context().add_class("wmjump_lbtn_current");
                 } else {
-                    lbtn.get_style_context().add_class(&["wbtn_", class].concat()[..]);
+                    lbtn.get_style_context().add_class(&["wbtn_", &class_sanitized].concat()[..]);
                     lbtn.get_style_context().add_class("wmjump_lbtn");
                 }
                 lbtn.add(&llbl);
@@ -175,14 +176,14 @@ pub fn make_vbox(
                 if num == active {
                     rbtn.get_style_context().add_class("wmjump_rbtn_current");
                 } else {
-                    rbtn.get_style_context().add_class(&["wbtn_", class].concat()[..]);
+                    rbtn.get_style_context().add_class(&["wbtn_", &class_sanitized].concat()[..]);
                     rbtn.get_style_context().add_class("wmjump_rbtn");
                 }
                 rbtn.add(&rlbl);
                 let btn = gtk::Button::new();
                 let truncated = name.clone();
                 let lbl = gtk::Label::new(Some(&format!("{}: {}", win_desktop + 1, abbreviate(truncated,maxlen))));
-                btn.get_style_context().add_class(&["wbtn_", class].concat()[..]);
+                btn.get_style_context().add_class(&["wbtn_", &class_sanitized].concat()[..]);
                 btn.get_style_context().add_class("wmjump_button");
                 btn.add(&lbl);
                 hbox.add(&lbtn);

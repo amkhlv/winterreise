@@ -76,6 +76,10 @@ for help...
 
 The colors of the buttons are determined by the `CSS` file `~/.config/winterreise/style.css`. 
 The style classes listed in that file follow the pattern: `wbtn_CLASSNAME`. 
+If `CLASSNAME` contains a dot, replace it with underscore:
+
+    org.inkscape.Inkscape -> wbtn_org_inkscape_Inkscape
+
 
 ### How to learn the `CLASSNAME` of an application
 

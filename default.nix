@@ -1,4 +1,4 @@
-with import <nixpkgs> { };
+{ rustPlatform, stdenv, pkgs ? import <nixpkgs> { } }:
 
 rustPlatform.buildRustPackage rec {
   name = "winterreise";
@@ -9,6 +9,6 @@ rustPlatform.buildRustPackage rec {
   meta = with stdenv.lib; {
     description = "windows interactions";
   };
-  nativeBuildInputs = [ pkg-config python3 ];
-  buildInputs = [ pkgconfig cairo pango gdk-pixbuf gtk3 glibc glib xorg.libxcb python3 xorg.libXmu xorg.xcbutilwm ];
+  nativeBuildInputs = [ pkgs.pkg-config pkgs.python3 pkgs.gcc ];
+  buildInputs = [ pkgs.pkg-config pkgs.gcc pkgs.cairo pkgs.pango pkgs.gdk-pixbuf pkgs.gtk3 pkgs.glibc pkgs.glib pkgs.xorg.libxcb pkgs.python3 pkgs.xorg.libXmu pkgs.xorg.xcbutilwm ];
 }

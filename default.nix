@@ -1,14 +1,8 @@
-{ rustPlatform, stdenv, pkgs ? import <nixpkgs> { } }:
-
-rustPlatform.buildRustPackage rec {
-  name = "winterreise";
+{ pkgs ? import <nixpkgs> { } }:
+pkgs.rustPlatform.buildRustPackage rec {
+  pname = "winterreise";
   version = "1.0";
-  src = builtins.path { path = ./.; name = "winterreise"; };
-
-  cargoHash = "sha256-Uv53DEySoL5vaUBYIinwcR1A3KXHGRGk/fJ1mM9h6yQ=";
-  meta = with stdenv.lib; {
-    description = "windows interactions";
-  };
-  nativeBuildInputs = [ pkgs.pkg-config pkgs.python3 pkgs.gcc ];
-  buildInputs = [ pkgs.pkg-config pkgs.gcc pkgs.cairo pkgs.pango pkgs.gdk-pixbuf pkgs.gtk3 pkgs.glibc pkgs.glib pkgs.xorg.libxcb pkgs.python3 pkgs.xorg.libXmu pkgs.xorg.xcbutilwm ];
-}
+  depsBuildBuild = with pkgs; [ pkg-config python314 gcc glibc glib gdk-pixbuf cairo pango atk gtk3 zlib zlib.dev xorg.xcbutil xorg.libXmu xorg.xcbutilwm xorg.libxcb ];
+  cargoLock.lockFile = ./Cargo.lock;
+  src = pkgs.lib.cleanSource ./.;
+  }

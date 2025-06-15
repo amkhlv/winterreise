@@ -20,6 +20,23 @@ I use patterns from [colourlovers.com](http://www.colourlovers.com/lover/albenaj
 Installation
 ============
 
+With Nix package manager
+------------------------
+
+    nix profile install github:amkhlv/winterreise
+
+But also need to create a configuration:
+
+    git clone https://github.com/amkhlv/winterreise
+    cd winterreise
+    mkdir  ~/.config/winterreise
+    cp  config/*  ~/.config/winterreise/
+
+This installs two programs: `winj` and `wint`.
+
+On Debian
+---------
+
 Need to install [Cargo](https://www.rust-lang.org/tools/install), 
 and some system libraries:
 
@@ -27,6 +44,8 @@ and some system libraries:
 
 then build and install:
 
+    git clone https://github.com/amkhlv/winterreise
+    cd winterreise
     cargo install --path .
 
 Then copy config:

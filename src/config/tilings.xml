@@ -1,0 +1,23 @@
+<displays>
+  <display resolution="1440x900">
+    <window nick="tex" geometry="0,0,800,883"/>
+    <window nick="pdf" geometry="780,0,660,890"/>
+    <window nick="svg" geometry="160,0,1280,890"/>
+  </display>
+  <display resolution="1600x900">
+    <window nick="tex" geometry="0,0,930,883"/>
+    <window nick="pdf" geometry="850,0,750,890"/>
+    <window nick="l" geometry="0,0,800,900"/>
+    <window nick="r" geometry="800,0,800,900"/>
+  </display>
+  <display resolution="1280x800">
+    <window nick="tex" geometry="0,0,720,790"/>
+    <window nick="pdf" geometry="670,0,645,790"/>
+  </display>
+  <display resolution="1920x1080">
+    <window nick="tex" geometry="0,0,1150,1060"/>
+    <window nick="pdf" geometry="1100,0,820,1075"/>
+    <window nick="l" geometry="0,0,959,1060"/>
+    <window nick="r" geometry="960,0,960,1060"/>
+  </display>
+</displays>

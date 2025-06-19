@@ -25,12 +25,6 @@ With Nix package manager
 
     nix profile install github:amkhlv/winterreise
 
-But also need to create a configuration:
-
-    git clone https://github.com/amkhlv/winterreise
-    cd winterreise
-    mkdir  ~/.config/winterreise
-    cp  config/*  ~/.config/winterreise/
 
 This installs two programs: `winj` and `wint`.
 
@@ -48,12 +42,7 @@ then build and install:
     cd winterreise
     cargo install --path .
 
-Then copy config:
-
-    mkdir  ~/.config/winterreise
-    cp  config/*  ~/.config/winterreise/
-
-The `cargo install` installs two programs: 
+This installs two programs: 
 
 1. `wint` for tiling windows
 

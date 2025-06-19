@@ -99,7 +99,7 @@ pub fn get_wm_data() -> Result<(Rc<Vec<(u32,u32,String,String)>>, Rc<String>, u3
     let active = ewmh::get_active_window(&ewmh_conn, screen_id).get_reply().unwrap();
     let clients = ewmh::get_client_list(&ewmh_conn, screen_id);
     let clients = clients.get_reply()?;
-    let wins: Rc<Vec<(u32,u32,String,String)>> = 
+    let wins: Rc<Vec<(u32,u32,String,String)>> =
         Rc::new(clients
                 .windows()
                 .iter()
@@ -128,21 +128,21 @@ pub fn get_wm_data() -> Result<(Rc<Vec<(u32,u32,String,String)>>, Rc<String>, u3
 pub fn abbreviate(x: String, maxlen: usize) -> String {
     let chars = x.chars().collect::<Vec<_>>();
     let len = chars.len();
-    if len < maxlen { 
-        return x; 
-    } else { 
+    if len < maxlen {
+        return x;
+    } else {
         return format!(
-            "{}...{}", 
+            "{}...{}",
             &chars[..(maxlen/8)*4].iter().cloned().collect::<String>(),
             &chars[(len - (maxlen/8)*4)..len].iter().cloned().collect::<String>()
             );
     }
 }
 pub fn make_vbox(
-    wins: &Rc<Vec<(u32,u32,String,String)>>, 
-    desktop: Option<u32>, 
-    space_between_buttons: i32, 
-    maxlen: usize, 
+    wins: &Rc<Vec<(u32,u32,String,String)>>,
+    desktop: Option<u32>,
+    space_between_buttons: i32,
+    maxlen: usize,
     blacklist: &Rc<BlacklistedItems>,
     active: &u32
     ) -> (gtk::Box, HashMap<u8, u32>) {
@@ -154,10 +154,10 @@ pub fn make_vbox(
         Some(d) => println!("only showing windows on desktop {}",d),
         None => println!("showing windows on all desktops")
     }
-    for (num, win_desktop, name, class) in 
+    for (num, win_desktop, name, class) in
         (*wins)
             .iter()
-            .filter(|win| match desktop { Some(d) => d == win.1, None => true }) 
+            .filter(|win| match desktop { Some(d) => d == win.1, None => true })
             .filter(|win| !(*blacklist).item.iter().map(|i| &i.class).collect::<Vec<&String>>().contains(&&win.3))
             {
                 let class_sanitized = class.replace(".", "_");
@@ -198,17 +198,27 @@ pub fn make_vbox(
 
 pub fn get_config_dir() ->  PathBuf {
     let p = Path::join(Path::new(&home_dir().unwrap()), ".config/winterreise/");
-    if p.exists() { p } else { 
-        let mut pb = PathBuf::new();
-        pb.push("/usr/share/winterreise/"); 
-        pb
+    if !p.exists()  {
+        std::fs::create_dir(&p).expect("Could not create config directory");
     }
+    p
 }
 pub fn get_conf() -> Result<Config, WintError> {
     let config_dir = get_config_dir();
-    let config_file = File::open(Path::join(&config_dir, "config.xml"))?;
+    let config_file_path = Path::join(&config_dir, "config.xml");
+    if !config_file_path.exists() {
+        let init_config = include_str!("config/config.xml");
+        std::fs::write(&config_file_path, init_config).expect("Could not write default config file");
+    }
+    let config_file = File::open(config_file_path).expect("Could not open config.xml");
     let conf = serde_xml_rs::from_reader(config_file)?;
     return Ok(conf);
+}
+pub fn check_css(p: &Path) -> () {
+    if !p.exists() {
+        let init_css = include_str!("config/style.css");
+        std::fs::write(p, init_css).expect("Could not write default css file");
+    }
 }
 
 pub fn go_to_window(win: u32, screen_id: i32, attempts: u8, mut delay: u64, ewmh_conn: &ewmh::Connection) {
@@ -221,12 +231,12 @@ pub fn go_to_window(win: u32, screen_id: i32, attempts: u8, mut delay: u64, ewmh
     for _t in 0..attempts {
         std::thread::sleep(std::time::Duration::from_millis(delay));
         let cw = ewmh::get_active_window(&ewmh_conn, screen_id).get_reply().unwrap();
-        if cw == win { 
-            println!("-- Welcome to window {:#x} !", win); 
-            break; 
-        } else { 
-            println!("-- going to window {:#x}\n   ...", win); 
-            delay = delay * 2; 
+        if cw == win {
+            println!("-- Welcome to window {:#x} !", win);
+            break;
+        } else {
+            println!("-- going to window {:#x}\n   ...", win);
+            delay = delay * 2;
         }
         ewmh::request_change_active_window(
             &ewmh_conn,

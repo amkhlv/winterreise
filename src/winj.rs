@@ -18,7 +18,7 @@ use std::path::Path;
 use std::io::{Write,BufRead};
 use xcb_util::ewmh;
 
-use winterreise::{Config, TMPFile, get_conf, get_config_dir, get_wm_data, make_vbox, go_to_window};
+use winterreise::{Config, TMPFile, get_conf, get_config_dir, get_wm_data, make_vbox, go_to_window, check_css};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let clops = App::new("wmjump")
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let blacklist = Rc::new(conf.blacklist);
     let tmpfilename = match conf.tmpfile {
             TMPFile::Custom(x) => format!("{}",x),
-            TMPFile::InXdgRuntime => 
+            TMPFile::InXdgRuntime =>
                 match std::env::vars().into_iter().filter(|(k,_v)| k == "XDG_RUNTIME_DIR").next() {
                     Some(x) => format!("{}/winterreise", x.1),
                     None => panic!("system does not have XDG_RUNTIME_DIR")
@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => None
     };
     let tmpfile = std::fs::OpenOptions::new().read(true).write(true).truncate(true).create(true).open(&tmpfilename).unwrap();
-    let tmpfile = Rc::new(RefCell::new(tmpfile)); 
+    let tmpfile = Rc::new(RefCell::new(tmpfile));
     let delay = conf.delay;
     let space_between_buttons = conf.space_between_buttons;
     let attempts = conf.attempts;
@@ -61,6 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Default::default(),
         ).expect("failed to initialize GTK application");
     let css = Path::join(&config_dir, "style.css");
+    check_css(&css);
     application.connect_activate(move |app| {
         let provider = gtk::CssProvider::new();
         match css.to_str() {
@@ -83,8 +84,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         window.get_style_context().add_class(if clops.is_present("current") { "main_window_currentonly" } else { "main_window" });
         window.connect_focus_out_event(clone!(@weak app => @default-return Inhibit(false), move |_w,_e| { app.quit(); return Inhibit(true); }));
         let (vbox, charhints) = make_vbox(
-            &wins, 
-            if clops.is_present("current") { Some(desktop) } else { None }, 
+            &wins,
+            if clops.is_present("current") { Some(desktop) } else { None },
             space_between_buttons,
             maxlen,
             &blacklist,
@@ -94,7 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let hints = Rc::new(charhints);
         let tmpfile = tmpfile.clone();
         window.connect_key_press_event(clone!(@weak app => @default-return Inhibit(false), move |_w,e| {
-            let keyval = e.get_keyval(); 
+            let keyval = e.get_keyval();
             let _keystate = e.get_state();
             if *keyval == gdk_sys::GDK_KEY_Escape as u32 {
                 match prev_win {
@@ -131,12 +132,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let new_desktop = (aa - 49) as u32;
                             std::thread::sleep(std::time::Duration::from_millis(dt));
                             let cd = ewmh::get_current_desktop(&ewmh_conn, screen_id).get_reply().unwrap();
-                            if cd == new_desktop { 
-                                println!("-- Welcome to desktop {} !", new_desktop) ; 
-                                break 
-                            } else { 
-                                println!("-- going to desktop {}\n   ...", new_desktop); 
-                                dt = dt * 2; 
+                            if cd == new_desktop {
+                                println!("-- Welcome to desktop {} !", new_desktop) ;
+                                break
+                            } else {
+                                println!("-- going to desktop {}\n   ...", new_desktop);
+                                dt = dt * 2;
                             }
                             ewmh::request_change_current_desktop(&ewmh_conn, screen_id, ( aa - 49 ) as u32, 0);
                             ewmh_conn.flush();

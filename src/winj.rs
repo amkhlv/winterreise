@@ -1,65 +1,86 @@
-extern crate gdk;
-extern crate gio;
+extern crate clap;
 extern crate dirs;
+extern crate gdk;
 extern crate gdk_sys;
+extern crate gio;
 extern crate xcb;
 extern crate xcb_util;
-extern crate clap;
 
-use clap::{Arg, App};
-use std::rc::Rc;
-use std::cell::RefCell;
-use gtk::prelude::*;
+use clap::{App, Arg};
+use dirs::home_dir;
 use gio::prelude::*;
 use glib::clone;
 use glib::signal::Inhibit;
-use dirs::home_dir;
+use gtk::prelude::*;
+use std::cell::RefCell;
+use std::io::{BufRead, Write};
 use std::path::Path;
-use std::io::{Write,BufRead};
+use std::rc::Rc;
 use xcb_util::ewmh;
 
-use winterreise::{Config, TMPFile, get_conf, get_config_dir, get_wm_data, make_vbox, go_to_window, check_css};
+use winterreise::{
+    check_css, get_conf, get_config_dir, get_wm_data, go_to_window, make_vbox, Config, TMPFile,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let clops = App::new("wmjump")
         .author("Andrei Mikhailov")
         .about("Window navigation")
-        .arg(Arg::with_name("current")
-             .help("only show windows on the current desktop")
-             .short("c"))
+        .arg(
+            Arg::with_name("current")
+                .help("only show windows on the current desktop")
+                .short("c"),
+        )
         .get_matches();
     let config_dir = get_config_dir();
     let conf: Config = get_conf()?;
     let maxlen = conf.maxwidth;
     let blacklist = Rc::new(conf.blacklist);
     let tmpfilename = match conf.tmpfile {
-            TMPFile::Custom(x) => format!("{}",x),
-            TMPFile::InXdgRuntime =>
-                match std::env::vars().into_iter().filter(|(k,_v)| k == "XDG_RUNTIME_DIR").next() {
-                    Some(x) => format!("{}/winterreise", x.1),
-                    None => panic!("system does not have XDG_RUNTIME_DIR")
-                },
-            TMPFile::InTmp => String::from("/tmp/winterreise")
-        };
-    let tmpfile = std::fs::OpenOptions::new().read(true).open(&tmpfilename)
-        .unwrap_or_else(|_e| std::fs::OpenOptions::new().write(true).create(true).open(&tmpfilename).unwrap());
-    let prev_win = match std::io::BufReader::new(&tmpfile).lines().into_iter().next() {
-        Some(Ok(x)) => {
-            match x.parse::<u32>() { Ok(w) => Some(w) , _ => None }
+        TMPFile::Custom(x) => format!("{}", x),
+        TMPFile::InXdgRuntime => match std::env::vars()
+            .into_iter()
+            .filter(|(k, _v)| k == "XDG_RUNTIME_DIR")
+            .next()
+        {
+            Some(x) => format!("{}/winterreise", x.1),
+            None => panic!("system does not have XDG_RUNTIME_DIR"),
         },
-        _ => None
+        TMPFile::InTmp => String::from("/tmp/winterreise"),
     };
-    let tmpfile = std::fs::OpenOptions::new().read(true).write(true).truncate(true).create(true).open(&tmpfilename).unwrap();
+    let tmpfile = std::fs::OpenOptions::new()
+        .read(true)
+        .open(&tmpfilename)
+        .unwrap_or_else(|_e| {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&tmpfilename)
+                .unwrap()
+        });
+    let prev_win = match std::io::BufReader::new(&tmpfile).lines().into_iter().next() {
+        Some(Ok(x)) => match x.parse::<u32>() {
+            Ok(w) => Some(w),
+            _ => None,
+        },
+        _ => None,
+    };
+    let tmpfile = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(&tmpfilename)
+        .unwrap();
     let tmpfile = Rc::new(RefCell::new(tmpfile));
     let delay = conf.delay;
     let space_between_buttons = conf.space_between_buttons;
     let attempts = conf.attempts;
     let (wins, geom, desktop, active) = get_wm_data()?;
 
-    let application = gtk::Application::new(
-        Some("com.andreimikhailov.winterreise"),
-        Default::default(),
-        ).expect("failed to initialize GTK application");
+    let application =
+        gtk::Application::new(Some("com.andreimikhailov.winterreise"), Default::default())
+            .expect("failed to initialize GTK application");
     let css = Path::join(&config_dir, "style.css");
     check_css(&css);
     application.connect_activate(move |app| {
@@ -110,8 +131,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match prev_win {
                     Some(w) =>  {
                         println!("-- previous window was {:#x}",w);
-                        let (xcb_conn, screen_id) = xcb::Connection::connect(None).unwrap();
-                        let ewmh_conn = ewmh::Connection::connect(xcb_conn).map_err(|(e, _)| e).unwrap();
+                        let (xcb_conn, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
+                        let ewmh_conn = ewmh::Connection::connect(xcb_conn).map_err(|(e, _)| e).expect("EWMH connection failed");
                         go_to_window(w, screen_id, attempts, delay, &ewmh_conn);
                         tmpfile.borrow_mut().write(&format!("{}",active).into_bytes()[..]);
                     }
@@ -123,8 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             match a {
                 Ok(aa) => {
                     app.quit();
-                    let (xcb_conn, screen_id) = xcb::Connection::connect(None).unwrap();
-                    let ewmh_conn = ewmh::Connection::connect(xcb_conn).map_err(|(e, _)| e).unwrap();
+                    let (xcb_conn, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
+                    let ewmh_conn = ewmh::Connection::connect(xcb_conn).map_err(|(e, _)| e).expect("EWMH connection failed");
                     let mut dt = delay;
                     if aa < 97 && aa > 48 {
                         tmpfile.borrow_mut().write(&format!("{}",active).into_bytes()[..]);

@@ -1,22 +1,22 @@
-extern crate gtk;
-extern crate glib;
-extern crate gdk;
-extern crate gio;
 extern crate dirs;
+extern crate gdk;
 extern crate gdk_sys;
+extern crate gio;
+extern crate glib;
+extern crate gtk;
 extern crate xcb_util;
 
-use std::fs::File;
-use std::rc::Rc;
-use gtk::prelude::*;
+use dirs::home_dir;
 use gio::prelude::*;
 use glib::clone;
 use glib::signal::Inhibit;
-use dirs::home_dir;
-use std::path::{Path,PathBuf};
+use gtk::prelude::*;
+use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use xcb_util::ewmh;
 
-use winterreise::{Config, get_conf, get_config_dir, get_wm_data, make_vbox, check_css};
+use winterreise::{check_css, get_conf, get_config_dir, get_wm_data, make_vbox, Config};
 
 #[macro_use]
 extern crate serde_derive;
@@ -26,7 +26,7 @@ extern crate serde_xml_rs;
 #[derive(Debug, Deserialize)]
 struct Window {
     pub nick: String,
-    pub geometry: String
+    pub geometry: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,37 +34,53 @@ struct Display {
     pub resolution: String,
 
     #[serde(rename = "window", default)]
-        pub windows: Vec<Window>
+    pub windows: Vec<Window>,
 }
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename = "displays", default)]
 struct Displays {
     #[serde(rename = "display", default)]
-    pub items: Vec<Display>
+    pub items: Vec<Display>,
 }
 
-fn get_geometry(xml_path: &PathBuf, nick:String, geom: &String) -> Option<Vec<u32>> {
-    let tilings : Displays = serde_xml_rs::from_reader(File::open(xml_path).unwrap()).unwrap();
-    let x = tilings.items.iter().filter(|disp| &disp.resolution == geom).next().unwrap();
-    x.windows.iter().filter(|w| w.nick == nick).next()
-        .map(|ni| ni.geometry.split(",").map(|s| str::parse::<u32>(s).unwrap()).collect())
+fn get_geometry(xml_path: &PathBuf, nick: String, geom: &String) -> Option<Vec<u32>> {
+    let tilings: Displays = serde_xml_rs::from_reader(File::open(xml_path).unwrap()).unwrap();
+    let x = tilings
+        .items
+        .iter()
+        .filter(|disp| &disp.resolution == geom)
+        .next()
+        .unwrap();
+    x.windows
+        .iter()
+        .filter(|w| w.nick == nick)
+        .next()
+        .map(|ni| {
+            ni.geometry
+                .split(",")
+                .map(|s| str::parse::<u32>(s).unwrap())
+                .collect()
+        })
 }
 
 fn do_resize(conn: &ewmh::Connection, scid: i32, wid: u32, g: &Vec<u32>) {
-            ewmh::request_move_resize_window(
-                &conn,
-                scid,
-                wid,
-                xcb::GRAVITY_STATIC,
-                ewmh::CLIENT_SOURCE_TYPE_NORMAL,
-                ewmh::MOVE_RESIZE_WINDOW_X | ewmh::MOVE_RESIZE_WINDOW_Y | ewmh::MOVE_RESIZE_WINDOW_HEIGHT | ewmh::MOVE_RESIZE_WINDOW_WIDTH,
-                g[0],
-                g[1],
-                g[2],
-                g[3]
-                );
-            conn.flush();
+    ewmh::request_move_resize_window(
+        &conn,
+        scid,
+        wid,
+        xcb::GRAVITY_STATIC,
+        ewmh::CLIENT_SOURCE_TYPE_NORMAL,
+        ewmh::MOVE_RESIZE_WINDOW_X
+            | ewmh::MOVE_RESIZE_WINDOW_Y
+            | ewmh::MOVE_RESIZE_WINDOW_HEIGHT
+            | ewmh::MOVE_RESIZE_WINDOW_WIDTH,
+        g[0],
+        g[1],
+        g[2],
+        g[3],
+    );
+    conn.flush();
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -79,10 +95,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let xml_path = Rc::new(xml_path);
     let (wins, geom, desktop, active) = get_wm_data()?;
 
-    let application = gtk::Application::new(
-        Some("com.andreimikhailov.winterreise"),
-        Default::default(),
-        ).expect("failed to initialize GTK application");
+    let application =
+        gtk::Application::new(Some("com.andreimikhailov.winterreise"), Default::default())
+            .expect("failed to initialize GTK application");
     let css = Path::join(&config_dir, "style.css");
     check_css(&css);
     application.connect_activate(move |app| {
@@ -131,8 +146,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return (wid, mg)
             }).collect();
             app.quit();
-            let (xcb_conn_2, screen_id) = xcb::Connection::connect(None).unwrap();
-            let ewmh_conn_2 = ewmh::Connection::connect(xcb_conn_2).map_err(|(e, _)| e).unwrap();
+            let (xcb_conn_2, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
+            let ewmh_conn_2 = ewmh::Connection::connect(xcb_conn_2).map_err(|(e, _)| e).expect("EWMH connection failed");
             for _t in 0..attempts {
                 std::thread::sleep(std::time::Duration::from_millis(delay));
                 for (wid, mg) in tilings.iter() {

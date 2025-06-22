@@ -6,13 +6,13 @@
  */
 
 .main_window {
-    background: #00ccff;
+    background: #201060;
 }
 .main_window_currentonly {
-    background: #ccff00;
+    background: #800020;
 }
 .main_window_tile {
-    background: #cc00ff;
+    background: #205010;
 }
 .main_vbox {
     padding: 10px;

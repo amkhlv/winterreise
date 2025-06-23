@@ -4,17 +4,19 @@ extern crate gdk_sys;
 extern crate gio;
 extern crate glib;
 extern crate gtk;
-extern crate xcb_util;
+extern crate xcb_wm;
 
+use crate::gdk::prelude::{ApplicationExt, ApplicationExtManual};
 use dirs::home_dir;
 use gio::prelude::*;
 use glib::clone;
-use glib::signal::Inhibit;
+use glib::signal::Propagation;
 use gtk::prelude::*;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use xcb_util::ewmh;
+use xcb::x::Window;
+use xcb_wm::{ewmh, icccm};
 
 use winterreise::{check_css, get_conf, get_config_dir, get_wm_data, make_vbox, Config};
 
@@ -24,17 +26,20 @@ extern crate serde;
 extern crate serde_xml_rs;
 
 #[derive(Debug, Deserialize)]
-struct Window {
+struct WindowSimple {
+    #[serde(rename = "@nick", default)]
     pub nick: String,
+    #[serde(rename = "@geometry", default)]
     pub geometry: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct Display {
+    #[serde(rename = "@resolution", default)]
     pub resolution: String,
 
     #[serde(rename = "window", default)]
-    pub windows: Vec<Window>,
+    pub windows: Vec<WindowSimple>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -64,23 +69,62 @@ fn get_geometry(xml_path: &PathBuf, nick: String, geom: &String) -> Option<Vec<u
         })
 }
 
-fn do_resize(conn: &ewmh::Connection, scid: i32, wid: u32, g: &Vec<u32>) {
-    ewmh::request_move_resize_window(
-        &conn,
-        scid,
-        wid,
-        xcb::GRAVITY_STATIC,
-        ewmh::CLIENT_SOURCE_TYPE_NORMAL,
-        ewmh::MOVE_RESIZE_WINDOW_X
-            | ewmh::MOVE_RESIZE_WINDOW_Y
-            | ewmh::MOVE_RESIZE_WINDOW_HEIGHT
-            | ewmh::MOVE_RESIZE_WINDOW_WIDTH,
-        g[0],
-        g[1],
-        g[2],
-        g[3],
-    );
-    conn.flush();
+fn do_resize(
+    xconn: &xcb::Connection,
+    conn: &icccm::Connection,
+    scid: i32,
+    wid: Window,
+    g: &Vec<u32>,
+) {
+    let mut sizeHints = icccm::proto::WmSizeHints::default();
+    //sizeHints.position(false, g[0], g[1]);
+    sizeHints.position(false, 10, 10);
+    //sizeHints.size(false, g[2], g[3]);
+    sizeHints.size(false, 800, 600);
+    println!("Size hints for {:?} = {:?}", wid, sizeHints);
+    /*
+    let unmap_req = xcb::x::UnmapWindow { window: wid };
+    let unmap_cookie = xconn.send_request_checked(&unmap_req);
+    match xconn.check_request(unmap_cookie) {
+        Ok(_) => println!("Unmapped window {:?}", wid),
+        Err(e) => println!("Error unmapping window {:?}: {:?}", wid, e),
+    }
+    */
+    //std::thread::sleep(std::time::Duration::from_millis(250));
+    let req = xcb::x::ConfigureWindow {
+        window: wid,
+        value_list: &[
+            xcb::x::ConfigWindow::X(g[0] as i32),
+            xcb::x::ConfigWindow::Y(g[1] as i32),
+            xcb::x::ConfigWindow::Width(g[2] as u32),
+            xcb::x::ConfigWindow::Height(g[3] as u32),
+        ],
+    };
+    let cookie = xconn.send_request_checked(&req);
+    match xconn.check_request(cookie) {
+        Ok(_) => println!("Resized window {:?} to {:?}", wid, g),
+        Err(e) => println!("Error resizing window {:?}: {:?}", wid, e),
+    }
+    /*
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    let req = icccm::proto::SetWmNormalHints::new(wid, &mut sizeHints);
+    let cookie = conn.send_request_checked(&req);
+    match conn.check_request(cookie) {
+        Ok(_) => println!("Resized window {:?} to {:?}", wid, g),
+        Err(e) => println!("Error resizing window {:?}: {:?}", wid, e),
+    }
+    */
+    //std::thread::sleep(std::time::Duration::from_millis(250));
+    /*
+    let map_req = xcb::x::MapWindow { window: wid };
+    let map_cookie = xconn.send_request_checked(&map_req);
+    match xconn.check_request(map_cookie) {
+        Ok(_) => println!("Unmapped window {:?}", wid),
+        Err(e) => println!("Error unmapping window {:?}: {:?}", wid, e),
+    }
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    let map_req = xcb::x::MapWindow { window: wid };
+    */
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -93,11 +137,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let attempts = conf.attempts;
     let xml_path = Path::join(&config_dir, "tilings.xml");
     let xml_path = Rc::new(xml_path);
-    let (wins, geom, desktop, active) = get_wm_data()?;
+    let (wins, geom, desktop, active) = get_wm_data();
 
-    let application =
-        gtk::Application::new(Some("com.andreimikhailov.winterreise"), Default::default())
-            .expect("failed to initialize GTK application");
+    let application = gtk::Application::builder()
+        .application_id("com.andreimikhailov.winterreise")
+        .build();
     let css = Path::join(&config_dir, "style.css");
     check_css(&css);
     application.connect_activate(move |app| {
@@ -111,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             None => { println!("ERROR: CSS file not found") ; }
         };
-        let screen = gdk::Screen::get_default();
+        let screen = gdk::Screen::default();
         match screen {
             Some(scr) => { gtk::StyleContext::add_provider_for_screen(&scr, &provider, 799); }
             _ => ()
@@ -119,49 +163,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let window = gtk::ApplicationWindow::new(app);
         window.set_title("Tile");
         window.set_type_hint(gdk::WindowTypeHint::Dialog);
-        window.get_style_context().add_class("main_window_tile");
-        window.connect_key_press_event(clone!(@weak app => @default-return Inhibit(false), move |_w,e| {
-            let keyval = e.get_keyval();
-            let _keystate = e.get_state();
+        window.style_context().add_class("main_window_tile");
+        window.connect_key_press_event(clone!(@weak app => @default-return Propagation::Proceed, move |_w,e| {
+            let keyval = e.keyval();
+            let _keystate = e.state();
             if *keyval == gdk_sys::GDK_KEY_Escape as u32 {
                 app.quit();
-                return Inhibit(true);
-            } else { return Inhibit(false); }
+                return Propagation::Stop;
+            } else { return Propagation::Proceed; }
         }));
 
         let (vbox, charhints) = make_vbox(&wins, Some(desktop), space_between_buttons, maxlen, &blacklist, &active);
         window.add(&vbox);
         let entry = gtk::Entry::new();
-        entry.get_style_context().add_class("wmjump_cmd_entry");
+        entry.style_context().add_class("wmjump_cmd_entry");
         let geom1 = Rc::clone(&geom);
+        println!("Geometry={:?}", geom1);
         let xml_path = Rc::clone(&xml_path);
         entry.connect_activate(clone!(@weak entry, @weak app => move |_| {
-            let command : String = entry.get_text().to_string();
-            let tilings : Vec<(u32, Option<Vec<u32>>)> = command.split(" ").map(|com| {
+            let command : String = entry.text().to_string();
+            let tilings : Vec<(xcb::x::Window, Option<Vec<u32>>)> = command.split(" ").map(|com| {
                 let mut it = com.chars();
                 let charhint = it.next().unwrap();
                 let wid = *charhints.get(&(charhint as u8 - 97 as u8)).unwrap();
                 let tiling = it.collect::<String>();
-                let mg = get_geometry(&*xml_path, tiling, &*geom1);
+                let mg = get_geometry(&xml_path, tiling, &geom1);
                 return (wid, mg)
             }).collect();
             app.quit();
-            let (xcb_conn_2, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
-            let ewmh_conn_2 = ewmh::Connection::connect(xcb_conn_2).map_err(|(e, _)| e).expect("EWMH connection failed");
-            for _t in 0..attempts {
-                std::thread::sleep(std::time::Duration::from_millis(delay));
+            let (xcb_conn, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
+            let icccm_conn = icccm::Connection::connect(&xcb_conn);
                 for (wid, mg) in tilings.iter() {
                     match mg {
-                        Some(g) => do_resize(&ewmh_conn_2, screen_id, *wid, &g),
+                        Some(g) => do_resize(&xcb_conn, &icccm_conn, screen_id, *wid, &g),
                         None => ()
                     }
                 }
-            }
         }));
         vbox.add(&entry);
         entry.grab_focus();
         window.show_all();
     });
-    application.run(&[]);
+    application.run();
     Ok(())
 }

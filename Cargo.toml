@@ -3,10 +3,10 @@ name = "winterreise"
 description = "Keyboard navigation and window tiling for Linux desktop"
 readme = "README.md"
 license = "GPL-3.0"
-version = "0.1.0"
+version = "1.1.0"
 authors = ["Andrei Mikhailov <amkhlv@gmail.com>"]
 repository = "https://github.com/amkhlv/winterreise"
-edition = "2018"
+edition = "2021"
 
 [package.metadata.deb]
 assets = [
@@ -31,41 +31,42 @@ name = "winj"
 path = "src/winj.rs"
 
 [dependencies.gtk]
-version = "0.9.2"
+version = "0.18.2"
 
 [dependencies.glib]
-version = "0.10.3"
+version = "0.18.5"
 
 [dependencies.gdk]
-version = "0.13.2"
+version = "0.18.2"
 
 [dependencies.gdk-sys]
-version = "0.10.0"
+version = "0.18.2"
 
 [dependencies.gio]
-version = "0.9.1"
+version = "0.18.4"
 
 [dependencies.dirs]
-version = "1.0.5"
+version = "6.0.0"
 
 [dependencies.xcb]
-version = "0.9"
+version = "1.5"
 
-[dependencies.xcb-util]
-version = "0.3.0"
+[dependencies.xcb-wm]
+version = "0.4.0"
 features = ["ewmh","icccm"]
 
 [dependencies.serde]
-version = "1.0.126"
+version = "1.0.219"
 
 [dependencies.serde_derive]
-version = "1.0.126"
+version = "1.0.219"
 
 [dependencies.serde-xml-rs]
-version = "0.4.1"
+version = "0.8.1"
 
 [dependencies.clap]
 version = "2.33.3"
 
 [dependencies.hex]
 version = "0.4.3"
+

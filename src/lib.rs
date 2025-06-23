@@ -2,7 +2,7 @@
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_xml_rs;
-extern crate xcb_util;
+extern crate xcb_wm;
 
 use dirs::home_dir;
 use gtk::prelude::*;
@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use xcb_util::{ewmh, icccm};
+use xcb::{x::Window, Connection};
+use xcb_wm::{ewmh, icccm};
 
 #[derive(Debug)]
 pub enum WintError {
@@ -18,8 +19,9 @@ pub enum WintError {
     SerDe(serde_xml_rs::Error),
     NoConfigFile(std::io::Error),
     XCBConnError(xcb::ConnError),
-    XCBError(xcb::Error<xcb::ffi::xcb_generic_error_t>),
+    XCBError(xcb::Error),
 }
+
 impl std::fmt::Display for WintError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
@@ -46,8 +48,8 @@ impl std::convert::From<xcb::ConnError> for WintError {
         WintError::XCBConnError(err)
     }
 }
-impl std::convert::From<xcb::Error<xcb::ffi::xcb_generic_error_t>> for WintError {
-    fn from(err: xcb::Error<xcb::ffi::xcb_generic_error_t>) -> WintError {
+impl std::convert::From<xcb::Error> for WintError {
+    fn from(err: xcb::Error) -> WintError {
         WintError::XCBError(err)
     }
 }
@@ -89,85 +91,81 @@ pub struct WM {
     pub desktop: u32,
 }
 
-pub fn get_wm_data(
-) -> Result<(Rc<Vec<(u32, u32, String, String)>>, Rc<String>, u32, u32), WintError> {
+pub fn get_wm_data() -> (
+    Rc<Vec<(Window, u32, String, String)>>,
+    Rc<String>,
+    u32,
+    Window,
+) {
     let (xcb_conn, screen_id) =
         xcb::Connection::connect(None).expect("XCB connection failed in get_wm_data");
-    let ewmh_conn = ewmh::Connection::connect(xcb_conn)
-        .map_err(|(e, _)| e)
-        .expect("EWMH connection failed in get_wm_data");
+    let ewmh_conn = ewmh::Connection::connect(&xcb_conn);
+    let icccm_conn = icccm::Connection::connect(&xcb_conn);
     let (xcb_conn1, _) =
         xcb::Connection::connect(None).expect("XCB connection failed in get_wm_data");
-    let (desktop_width, desktop_height) =
-        ewmh::get_desktop_geometry(&ewmh_conn, screen_id).get_reply()?;
+    let geom_req = ewmh::proto::GetDesktopGeometry;
+    let geom_cookie = ewmh_conn.send_request(&geom_req);
+    let geom_repl = ewmh_conn
+        .wait_for_reply(geom_cookie)
+        .expect("Failed to get desktop geometry");
+    let (desktop_width, desktop_height) = (geom_repl.width, geom_repl.height);
     let geom = Rc::new(String::from(format!(
         "{}x{}",
         desktop_width, desktop_height
     )));
     println!("DESKTOP GEOMETRY:{}x{}", desktop_width, desktop_height);
-    let active = ewmh::get_active_window(&ewmh_conn, screen_id)
-        .get_reply()
-        .unwrap();
-    let clients = ewmh::get_client_list(&ewmh_conn, screen_id);
-    let clients = clients.get_reply()?;
-    let wins: Rc<Vec<(u32, u32, String, String)>> = Rc::new(
+    let active_win_req = ewmh::proto::GetActiveWindow;
+    let active_win_cookie = ewmh_conn.send_request(&active_win_req);
+    let active_win_repl = ewmh_conn
+        .wait_for_reply(active_win_cookie)
+        .expect("Failed to get active window");
+    let active = active_win_repl.window;
+    let clients_req = ewmh::proto::GetClientList;
+    let clients_cookie = ewmh_conn.send_request(&clients_req);
+    let clients_repl = ewmh_conn
+        .wait_for_reply(clients_cookie)
+        .expect("Failed to get client list");
+    let clients = clients_repl.clients;
+
+    let wins: Rc<Vec<(Window, u32, String, String)>> = Rc::new(
         clients
-            .windows()
             .iter()
             .map(|w| {
-                let xconn = xcb::base::Connection::connect(None).unwrap();
-                let a = xcb::intern_atom(&xconn.0, false, "_NET_WM_NAME")
-                    .get_reply()
-                    .unwrap();
-                let u = xcb::intern_atom(&xconn.0, false, "UTF8_STRING")
-                    .get_reply()
-                    .unwrap();
-                let dtop = ewmh::get_wm_desktop(&ewmh_conn, *w)
-                    .get_reply()
-                    .unwrap_or(0);
-                let enc = icccm::get_wm_name(&ewmh_conn, *w)
-                    .get_reply()
-                    .unwrap()
-                    .encoding();
-                let nm = match xcb::get_property(
-                    &xconn.0,
-                    false,
-                    *w,
-                    a.atom(),
-                    u.atom(),
-                    0,
-                    std::u32::MAX,
-                )
-                .get_reply()
-                {
-                    Ok(x) => format!(
-                        "{}",
-                        String::from_utf8(x.value::<u8>().to_vec()).unwrap_or(String::from("???"))
-                    ),
-                    Err(e) => {
-                        eprintln!("ERROR while xcb::get_property : {:?}", e);
-                        String::from("???")
-                    }
+                let xconn = xcb::Connection::connect(None).unwrap();
+                let net_wm_name_atom = xcb::x::InternAtom {
+                    only_if_exists: false,
+                    name: "_NET_WM_NAME".as_bytes(),
                 };
-                //let nm = String::from(icccm::get_wm_name(&xcb_conn1, *w).get_reply().unwrap().name());
-                let class = String::from(
-                    icccm::get_wm_class(&xcb_conn1, *w)
-                        .get_reply()
-                        .unwrap()
-                        .instance(),
-                );
-                if enc != xcb::ATOM_STRING {
-                    println!(
-                        "{:#x} COMPOUND_TEXT ENC:{},NAME:{},CLASS:{}",
-                        w, enc, &nm, &class
-                    );
-                }
+                let dtop_req = ewmh::proto::GetWmDesktop(*w);
+                let dtop_cookie = ewmh_conn.send_request(&dtop_req);
+                let dtop_repl = ewmh_conn
+                    .wait_for_reply(dtop_cookie)
+                    .expect("Failed to get window desktop");
+                let dtop = dtop_repl.desktop;
+                let wmname_req = ewmh::proto::GetWmName(*w);
+                let wmname_cookie = ewmh_conn.send_request(&wmname_req);
+                let wmname_repl = ewmh_conn
+                    .wait_for_reply(wmname_cookie)
+                    .expect("Failed to get window name");
+                let nm = wmname_repl.name;
+                let wmclass_req = icccm::proto::GetWmClass::new(*w);
+                let wmclass_cookie = icccm_conn.send_request(&wmclass_req);
+                let wmclass_repl = icccm_conn
+                    .wait_for_reply(wmclass_cookie)
+                    .expect("Failed to get window class");
+                let class = wmclass_repl.class;
+
                 (*w, dtop, nm, class)
             })
             .collect(),
     );
-    let desktop = ewmh::get_current_desktop(&ewmh_conn, screen_id).get_reply()?;
-    return Ok((wins, geom, desktop, active));
+    let desktop_req = ewmh::proto::GetCurrentDesktop;
+    let desktop_cookie = ewmh_conn.send_request(&desktop_req);
+    let desktop_repl = ewmh_conn
+        .wait_for_reply(desktop_cookie)
+        .expect("Failed to get current desktop");
+    let desktop = desktop_repl.desktop;
+    return (wins, geom, desktop, active);
 }
 
 pub fn abbreviate(x: String, maxlen: usize) -> String {
@@ -190,16 +188,16 @@ pub fn abbreviate(x: String, maxlen: usize) -> String {
     }
 }
 pub fn make_vbox(
-    wins: &Rc<Vec<(u32, u32, String, String)>>,
+    wins: &Rc<Vec<(Window, u32, String, String)>>,
     desktop: Option<u32>,
     space_between_buttons: i32,
     maxlen: usize,
     blacklist: &Rc<BlacklistedItems>,
-    active: &u32,
-) -> (gtk::Box, HashMap<u8, u32>) {
+    active: &Window,
+) -> (gtk::Box, HashMap<u8, Window>) {
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, space_between_buttons);
-    vbox.get_style_context().add_class("main_vbox");
-    let mut charhints: HashMap<u8, u32> = HashMap::new();
+    vbox.style_context().add_class("main_vbox");
+    let mut charhints: HashMap<u8, Window> = HashMap::new();
     let mut j = 0 as u8;
     match desktop {
         Some(d) => println!("only showing windows on desktop {}", d),
@@ -225,21 +223,21 @@ pub fn make_vbox(
         let lbtn = gtk::Button::new();
         let llbl = gtk::Label::new(Some(&format!("{}", (j + 97) as char)));
         if num == active {
-            lbtn.get_style_context().add_class("wmjump_lbtn_current");
+            lbtn.style_context().add_class("wmjump_lbtn_current");
         } else {
-            lbtn.get_style_context()
+            lbtn.style_context()
                 .add_class(&["wbtn_", &class_sanitized].concat()[..]);
-            lbtn.get_style_context().add_class("wmjump_lbtn");
+            lbtn.style_context().add_class("wmjump_lbtn");
         }
         lbtn.add(&llbl);
         let rbtn = gtk::Button::new();
         let rlbl = gtk::Label::new(Some(&format!("{}", (j + 97) as char)));
         if num == active {
-            rbtn.get_style_context().add_class("wmjump_rbtn_current");
+            rbtn.style_context().add_class("wmjump_rbtn_current");
         } else {
-            rbtn.get_style_context()
+            rbtn.style_context()
                 .add_class(&["wbtn_", &class_sanitized].concat()[..]);
-            rbtn.get_style_context().add_class("wmjump_rbtn");
+            rbtn.style_context().add_class("wmjump_rbtn");
         }
         rbtn.add(&rlbl);
         let btn = gtk::Button::new();
@@ -249,9 +247,9 @@ pub fn make_vbox(
             win_desktop + 1,
             abbreviate(truncated, maxlen)
         )));
-        btn.get_style_context()
+        btn.style_context()
             .add_class(&["wbtn_", &class_sanitized].concat()[..]);
-        btn.get_style_context().add_class("wmjump_button");
+        btn.style_context().add_class("wmjump_button");
         btn.add(&lbl);
         hbox.add(&lbtn);
         hbox.add(&btn);
@@ -289,42 +287,29 @@ pub fn check_css(p: &Path) -> () {
     }
 }
 
-pub fn go_to_window(
-    win: u32,
-    screen_id: i32,
-    attempts: u8,
-    mut delay: u64,
-    ewmh_conn: &ewmh::Connection,
-) {
-    let dtop = ewmh::get_wm_desktop(&ewmh_conn, win).get_reply().unwrap();
-    let curwin = ewmh::get_active_window(&ewmh_conn, screen_id)
-        .get_reply()
-        .unwrap();
-    //println!("Running: {}",s);
-    //f.write(format!("{:#x}", s));
-    //ewmh::set_wm_desktop(&ewmh_conn, **s, dtop);
-    ewmh::request_change_current_desktop(&ewmh_conn, screen_id, dtop, 0);
-    for _t in 0..attempts {
-        std::thread::sleep(std::time::Duration::from_millis(delay));
-        let cw = ewmh::get_active_window(&ewmh_conn, screen_id)
-            .get_reply()
-            .unwrap();
-        if cw == win {
-            println!("-- Welcome to window {:#x} !", win);
-            break;
-        } else {
-            println!("-- going to window {:#x}\n   ...", win);
-            delay = delay * 2;
-        }
-        ewmh::request_change_active_window(
-            &ewmh_conn,
-            screen_id,
-            win,
-            ewmh::CLIENT_SOURCE_TYPE_NORMAL,
-            0,
-            curwin,
-        );
-        ewmh_conn.flush();
-    }
-    ewmh_conn.flush();
+pub fn go_to_window(win: Window, screen_id: u32, mut delay: u64, ewmh_conn: &ewmh::Connection) {
+    let dtop_req = ewmh::proto::GetWmDesktop(win);
+    let dtop_cookie = ewmh_conn.send_request(&dtop_req);
+    let dtop_repl = ewmh_conn
+        .wait_for_reply(dtop_cookie)
+        .expect("Failed to get window desktop");
+
+    let dtop = dtop_repl.desktop;
+    let active_win_req = ewmh::proto::GetActiveWindow;
+    let active_win_cookie = ewmh_conn.send_request(&active_win_req);
+    let active_win_repl = ewmh_conn
+        .wait_for_reply(active_win_cookie)
+        .expect("Failed to get active window");
+    let curwin = active_win_repl.window;
+    let chdtop_req = ewmh::proto::SendCurrentDesktop::new(ewmh_conn, dtop);
+    ewmh_conn
+        .send_and_check_request(&chdtop_req)
+        .expect("Failed to change desktop");
+
+    let chwin_req = ewmh::proto::SendActiveWindow::new(ewmh_conn, win, 2, 0, Some(curwin));
+    ewmh_conn
+        .send_and_check_request(&chwin_req)
+        .expect("Failed to change active window");
+
+    println!("-- going to window {:?}\n   ...", win);
 }

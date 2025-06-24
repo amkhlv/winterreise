@@ -132,9 +132,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conf: Config = get_conf().expect("Could not read the configuration file");
     let maxlen = conf.maxwidth;
     let blacklist = Rc::new(conf.blacklist);
-    let delay = conf.delay;
     let space_between_buttons = conf.space_between_buttons;
-    let attempts = conf.attempts;
     let xml_path = Path::join(&config_dir, "tilings.xml");
     let xml_path = Rc::new(xml_path);
     let (wins, geom, desktop, active) = get_wm_data();

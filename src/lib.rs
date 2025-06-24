@@ -78,11 +78,9 @@ pub enum TMPFile {
 #[serde(rename = "configuration")]
 pub struct Config {
     pub tmpfile: TMPFile,
-    pub delay: u64,
     #[serde(rename = "spaceBetweenButtons", default)]
     pub space_between_buttons: i32,
     pub maxwidth: usize,
-    pub attempts: u8,
     pub blacklist: BlacklistedItems,
 }
 
@@ -287,7 +285,7 @@ pub fn check_css(p: &Path) -> () {
     }
 }
 
-pub fn go_to_window(win: Window, screen_id: u32, mut delay: u64, ewmh_conn: &ewmh::Connection) {
+pub fn go_to_window(win: Window, screen_id: u32, ewmh_conn: &ewmh::Connection) {
     let dtop_req = ewmh::proto::GetWmDesktop(win);
     let dtop_cookie = ewmh_conn.send_request(&dtop_req);
     let dtop_repl = ewmh_conn

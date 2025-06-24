@@ -75,9 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .open(&tmpfilename)
         .unwrap();
     let tmpfile = Rc::new(RefCell::new(tmpfile));
-    let delay = conf.delay;
     let space_between_buttons = conf.space_between_buttons;
-    let attempts = conf.attempts;
 
     let application = gtk::Application::builder()
         .application_id("com.andreimikhailov.winterreise")
@@ -138,7 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let ewmh_conn = ewmh::Connection::connect(&xcb_conn);
                         wins.iter().find(|x| x.0.resource_id() == w).map(|active| {
                             println!("-- going to window {:#x} on screen {}", w, screen_id);
-                            go_to_window(active.0, screen_id as u32, delay, &ewmh_conn);
+                            go_to_window(active.0, screen_id as u32, &ewmh_conn);
                         });
                         tmpfile.borrow_mut().write(&format!("{}",active.resource_id()).into_bytes()[..]).expect("failed writing to tmpfile");
                     }
@@ -152,29 +150,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     app.quit();
                     let (xcb_conn, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
                     let ewmh_conn = ewmh::Connection::connect(&xcb_conn);
-                    let mut dt = delay;
                     if aa < 97 && aa > 48 {
                         tmpfile.borrow_mut().write(&format!("{}",active.resource_id()).into_bytes()[..]).expect("failed writing to tmpfile");
                         let new_desktop = (aa - 49) as u32;
-                        std::thread::sleep(std::time::Duration::from_millis(dt));
-                        let dtop_req = ewmh::proto::GetCurrentDesktop;
-                        let dtop_cookie = ewmh_conn.send_request(&dtop_req);
-                        let dtop_repl = ewmh_conn
-                            .wait_for_reply(dtop_cookie)
-                            .expect("Failed to get current desktop");
-                        let cd = dtop_repl.desktop;
-                        if cd == new_desktop {
-                            println!("-- Welcome to desktop {} !", new_desktop) ;
-                        } else {
-                            println!("-- going to desktop {}\n   ...", new_desktop);
-                            dt = dt * 2;
-                        }
                         let chdt_req = ewmh::proto::SendCurrentDesktop::new(&ewmh_conn, new_desktop);
                         ewmh_conn.send_and_check_request(&chdt_req).expect("Failed to change desktop");
                         return Propagation::Stop;
                     } else  if let Some(s) = &hints.get(&(aa - 97)) {
                         tmpfile.borrow_mut().write(&format!("{}",active.resource_id()).into_bytes()[..]).expect("failed to write to tmpfile");
-                        go_to_window(**s, screen_id as u32, delay, &ewmh_conn);
+                        go_to_window(**s, screen_id as u32, &ewmh_conn);
                         return Propagation::Stop;
                     } else {
                         return Propagation::Proceed;

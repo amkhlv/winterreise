@@ -7,8 +7,6 @@ extern crate gtk;
 extern crate xcb_wm;
 
 use crate::gdk::prelude::{ApplicationExt, ApplicationExtManual};
-use dirs::home_dir;
-use gio::prelude::*;
 use glib::clone;
 use glib::signal::Propagation;
 use gtk::prelude::*;
@@ -16,7 +14,6 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use xcb::x::Window;
-use xcb_wm::{ewmh, icccm};
 
 use winterreise::{check_css, get_conf, get_config_dir, get_wm_data, make_vbox, Config};
 
@@ -69,28 +66,7 @@ fn get_geometry(xml_path: &PathBuf, nick: String, geom: &String) -> Option<Vec<u
         })
 }
 
-fn do_resize(
-    xconn: &xcb::Connection,
-    conn: &icccm::Connection,
-    scid: i32,
-    wid: Window,
-    g: &Vec<u32>,
-) {
-    let mut sizeHints = icccm::proto::WmSizeHints::default();
-    //sizeHints.position(false, g[0], g[1]);
-    sizeHints.position(false, 10, 10);
-    //sizeHints.size(false, g[2], g[3]);
-    sizeHints.size(false, 800, 600);
-    println!("Size hints for {:?} = {:?}", wid, sizeHints);
-    /*
-    let unmap_req = xcb::x::UnmapWindow { window: wid };
-    let unmap_cookie = xconn.send_request_checked(&unmap_req);
-    match xconn.check_request(unmap_cookie) {
-        Ok(_) => println!("Unmapped window {:?}", wid),
-        Err(e) => println!("Error unmapping window {:?}: {:?}", wid, e),
-    }
-    */
-    //std::thread::sleep(std::time::Duration::from_millis(250));
+fn do_resize(xconn: &xcb::Connection, wid: Window, g: &Vec<u32>) {
     let req = xcb::x::ConfigureWindow {
         window: wid,
         value_list: &[
@@ -105,26 +81,6 @@ fn do_resize(
         Ok(_) => println!("Resized window {:?} to {:?}", wid, g),
         Err(e) => println!("Error resizing window {:?}: {:?}", wid, e),
     }
-    /*
-    std::thread::sleep(std::time::Duration::from_millis(250));
-    let req = icccm::proto::SetWmNormalHints::new(wid, &mut sizeHints);
-    let cookie = conn.send_request_checked(&req);
-    match conn.check_request(cookie) {
-        Ok(_) => println!("Resized window {:?} to {:?}", wid, g),
-        Err(e) => println!("Error resizing window {:?}: {:?}", wid, e),
-    }
-    */
-    //std::thread::sleep(std::time::Duration::from_millis(250));
-    /*
-    let map_req = xcb::x::MapWindow { window: wid };
-    let map_cookie = xconn.send_request_checked(&map_req);
-    match xconn.check_request(map_cookie) {
-        Ok(_) => println!("Unmapped window {:?}", wid),
-        Err(e) => println!("Error unmapping window {:?}: {:?}", wid, e),
-    }
-    std::thread::sleep(std::time::Duration::from_millis(250));
-    let map_req = xcb::x::MapWindow { window: wid };
-    */
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -189,14 +145,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return (wid, mg)
             }).collect();
             app.quit();
-            let (xcb_conn, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
-            let icccm_conn = icccm::Connection::connect(&xcb_conn);
-                for (wid, mg) in tilings.iter() {
-                    match mg {
-                        Some(g) => do_resize(&xcb_conn, &icccm_conn, screen_id, *wid, &g),
-                        None => ()
-                    }
+            let (xcb_conn, _screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
+            for (wid, mg) in tilings.iter() {
+                match mg {
+                    Some(g) => do_resize(&xcb_conn, *wid, &g),
+                    None => ()
                 }
+            }
         }));
         vbox.add(&entry);
         entry.grab_focus();

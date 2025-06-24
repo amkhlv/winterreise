@@ -7,12 +7,10 @@ extern crate xcb;
 extern crate xcb_wm;
 
 use clap::{App, Arg};
-use dirs::home_dir;
-use gio::prelude::*;
 use glib::clone;
 use glib::signal::Propagation;
+use gtk::glib;
 use gtk::prelude::*;
-use gtk::{glib, Application};
 
 use crate::gdk::prelude::{ApplicationExt, ApplicationExtManual};
 use crate::xcb::Xid;
@@ -46,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .next()
         {
             Some(x) => format!("{}/winterreise", x.1),
-            None => panic!("system does not have XDG_RUNTIME_DIR"),
+            None => panic!("system does not have XDG_RUNTIME_DIR; please use custom <tmpfile><custom>...</custom></tmpfile> or <tmpfile><in_tmp/></custom> option in config"),
         },
         TMPFile::InTmp => String::from("/tmp/winterreise"),
     };
@@ -84,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     check_css(&css);
     let blacklist = Rc::new(conf.blacklist);
     application.connect_activate(move |app| {
-        let (wins, geom, desktop, active) = get_wm_data();
+        let (wins, _geom, desktop, active) = get_wm_data();
         let provider = gtk::CssProvider::new();
         match css.to_str() {
             Some(x) => {
@@ -136,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let ewmh_conn = ewmh::Connection::connect(&xcb_conn);
                         wins.iter().find(|x| x.0.resource_id() == w).map(|active| {
                             println!("-- going to window {:#x} on screen {}", w, screen_id);
-                            go_to_window(active.0, screen_id as u32, &ewmh_conn);
+                            go_to_window(active.0, &ewmh_conn);
                         });
                         tmpfile.borrow_mut().write(&format!("{}",active.resource_id()).into_bytes()[..]).expect("failed writing to tmpfile");
                     }
@@ -148,7 +146,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             match a {
                 Ok(aa) => {
                     app.quit();
-                    let (xcb_conn, screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
+                    let (xcb_conn, _screen_id) = xcb::Connection::connect(None).expect("XCB connection failed");
                     let ewmh_conn = ewmh::Connection::connect(&xcb_conn);
                     if aa < 97 && aa > 48 {
                         tmpfile.borrow_mut().write(&format!("{}",active.resource_id()).into_bytes()[..]).expect("failed writing to tmpfile");
@@ -158,7 +156,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         return Propagation::Stop;
                     } else  if let Some(s) = &hints.get(&(aa - 97)) {
                         tmpfile.borrow_mut().write(&format!("{}",active.resource_id()).into_bytes()[..]).expect("failed to write to tmpfile");
-                        go_to_window(**s, screen_id as u32, &ewmh_conn);
+                        go_to_window(**s, &ewmh_conn);
                         return Propagation::Stop;
                     } else {
                         return Propagation::Proceed;

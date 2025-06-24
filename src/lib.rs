@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use xcb::{x::Window, Connection};
+use xcb::x::Window;
 use xcb_wm::{ewmh, icccm};
 
 #[derive(Debug)]
@@ -95,12 +95,10 @@ pub fn get_wm_data() -> (
     u32,
     Window,
 ) {
-    let (xcb_conn, screen_id) =
+    let (xcb_conn, _screen_id) =
         xcb::Connection::connect(None).expect("XCB connection failed in get_wm_data");
     let ewmh_conn = ewmh::Connection::connect(&xcb_conn);
     let icccm_conn = icccm::Connection::connect(&xcb_conn);
-    let (xcb_conn1, _) =
-        xcb::Connection::connect(None).expect("XCB connection failed in get_wm_data");
     let geom_req = ewmh::proto::GetDesktopGeometry;
     let geom_cookie = ewmh_conn.send_request(&geom_req);
     let geom_repl = ewmh_conn
@@ -111,7 +109,7 @@ pub fn get_wm_data() -> (
         "{}x{}",
         desktop_width, desktop_height
     )));
-    println!("DESKTOP GEOMETRY:{}x{}", desktop_width, desktop_height);
+    //println!("DESKTOP GEOMETRY:{}x{}", desktop_width, desktop_height);
     let active_win_req = ewmh::proto::GetActiveWindow;
     let active_win_cookie = ewmh_conn.send_request(&active_win_req);
     let active_win_repl = ewmh_conn
@@ -129,11 +127,6 @@ pub fn get_wm_data() -> (
         clients
             .iter()
             .map(|w| {
-                let xconn = xcb::Connection::connect(None).unwrap();
-                let net_wm_name_atom = xcb::x::InternAtom {
-                    only_if_exists: false,
-                    name: "_NET_WM_NAME".as_bytes(),
-                };
                 let dtop_req = ewmh::proto::GetWmDesktop(*w);
                 let dtop_cookie = ewmh_conn.send_request(&dtop_req);
                 let dtop_repl = ewmh_conn
@@ -152,7 +145,6 @@ pub fn get_wm_data() -> (
                     .wait_for_reply(wmclass_cookie)
                     .expect("Failed to get window class");
                 let class = wmclass_repl.class;
-
                 (*w, dtop, nm, class)
             })
             .collect(),
@@ -274,7 +266,7 @@ pub fn get_conf() -> Result<Config, WintError> {
         std::fs::write(&config_file_path, init_config)
             .expect("Could not write default config file");
     }
-    let config_file = File::open(config_file_path).expect("Could not open config.xml");
+    let config_file = File::open(config_file_path)?;
     let conf = serde_xml_rs::from_reader(config_file)?;
     return Ok(conf);
 }
@@ -285,7 +277,7 @@ pub fn check_css(p: &Path) -> () {
     }
 }
 
-pub fn go_to_window(win: Window, screen_id: u32, ewmh_conn: &ewmh::Connection) {
+pub fn go_to_window(win: Window, ewmh_conn: &ewmh::Connection) {
     let dtop_req = ewmh::proto::GetWmDesktop(win);
     let dtop_cookie = ewmh_conn.send_request(&dtop_req);
     let dtop_repl = ewmh_conn

@@ -104,7 +104,7 @@ Notice that there are two values: "xterm" and "UXTerm"
 The first one, "xterm", is called `res_name` , while the second ("UXTerm") is called `res_class`.
 (Together they form a struct `XClassHint` of the `xlib` library.) 
 
-Our `winj` looks at `res_name`. It ignores `res_class`.
+Our `winj` looks at `res_class`. It ignores `res_name`.
 
 
 ### Using xdotool to set WM_CLASS of a window
@@ -121,9 +121,9 @@ where `$WINDOW_PID` is the process ID of the process which owns the window.
 The result will be a window code (or a list of codes, if there are several windows). 
 Let us call it `$WINDOW_CODE`. Then second step is to execute:
 
-    xdotool  set_window --classname NEWNAME  $WINDOW_CODE
+    xdotool  set_window --class NEWNAME  $WINDOW_CODE
 
-where `NEWNAME` is the `res_name` we want.
+where `NEWNAME` is the `res_class` we want.
 
 
 Configuring keyboard shortcuts with `xbindkeys`

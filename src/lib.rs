@@ -276,6 +276,12 @@ pub fn check_css(p: &Path) -> () {
         std::fs::write(p, init_css).expect("Could not write default css file");
     }
 }
+pub fn check_tilings(p: &Path) -> () {
+    if !p.exists() {
+        let init_css = include_str!("config/tilings.xml");
+        std::fs::write(p, init_css).expect("Could not write default tilings file");
+    }
+}
 
 pub fn go_to_window(win: Window, ewmh_conn: &ewmh::Connection) {
     let dtop_req = ewmh::proto::GetWmDesktop(win);

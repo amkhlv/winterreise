@@ -15,7 +15,9 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use xcb::x::Window;
 
-use winterreise::{check_css, get_conf, get_config_dir, get_wm_data, make_vbox, Config};
+use winterreise::{
+    check_css, check_tilings, get_conf, get_config_dir, get_wm_data, make_vbox, Config,
+};
 
 #[macro_use]
 extern crate serde_derive;
@@ -89,15 +91,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let maxlen = conf.maxwidth;
     let blacklist = Rc::new(conf.blacklist);
     let space_between_buttons = conf.space_between_buttons;
-    let xml_path = Path::join(&config_dir, "tilings.xml");
-    let xml_path = Rc::new(xml_path);
     let (wins, geom, desktop, active) = get_wm_data();
 
     let application = gtk::Application::builder()
         .application_id("com.andreimikhailov.winterreise")
         .build();
+    let xml_path = Path::join(&config_dir, "tilings.xml");
+    check_tilings(&xml_path);
     let css = Path::join(&config_dir, "style.css");
     check_css(&css);
+    let xml_path = Rc::new(xml_path);
     application.connect_activate(move |app| {
         let provider = gtk::CssProvider::new();
         match css.to_str() {
@@ -107,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Err(x) => { println!("ERROR: {:?}", x); }
                 }
             }
-            None => { println!("ERROR: CSS file not found") ; }
+            None => { println!("ERROR: path contains non-unicode characters") ; }
         };
         let screen = gdk::Screen::default();
         match screen {

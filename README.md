@@ -58,6 +58,22 @@ Window tiling
 
 There is a tiling description file `~/.config/winterreise/tilings.xml`.
 Each "geometry" is of the form `x,y,width,height` where `x,y` are the coordinates of the top left corner of the window.
+Example of `~/.config/winterreise/tilings.xml`:
+
+    <displays>
+      <display resolution="1600x900">
+        <window nick="tex" geometry="0,0,930,883"/>
+        <window nick="pdf" geometry="850,0,750,890"/>
+        <window nick="l" geometry="0,0,800,900"/>
+        <window nick="r" geometry="800,0,800,900"/>
+      </display>
+      <display resolution="1920x1080">
+        <window nick="tex" geometry="0,0,1150,1060"/>
+        <window nick="pdf" geometry="1100,0,820,1075"/>
+        <window nick="l" geometry="0,0,959,1060"/>
+        <window nick="r" geometry="960,0,960,1060"/>
+      </display>
+    </display>
 
 Execution of the command `wint` brings up a dialog window containing:
 

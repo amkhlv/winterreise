@@ -19,7 +19,8 @@ use std::io::{BufRead, Write};
 use std::path::Path;
 use std::rc::Rc;
 use winterreise::{
-    check_css, get_conf, get_config_dir, get_wm_data, go_to_window, make_vbox, Config, TMPFile,
+    check_css, check_tilings, get_conf, get_config_dir, get_wm_data, go_to_window, make_vbox,
+    Config, TMPFile,
 };
 use xcb_wm::ewmh;
 
@@ -80,6 +81,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
     let css = Path::join(&config_dir, "style.css");
     check_css(&css);
+    let tilings = Path::join(&config_dir, "tilings.xml");
+    check_tilings(&tilings);
     let blacklist = Rc::new(conf.blacklist);
     application.connect_activate(move |app| {
         let (wins, _geom, desktop, active) = get_wm_data();
